@@ -1,4 +1,4 @@
-# 256702-F2-Team-272-400
+# 256702-F2-Team12-272-400
 # Java Project
 # แบบข้อเสนอโครงงาน
 # Project Centipede Game 
