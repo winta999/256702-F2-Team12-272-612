@@ -4,72 +4,153 @@ import java.awt.*;
 import java.util.ArrayList;
 
 public class Centipede {
-    private ArrayList<Point> segments;
-    private int direction; // 1 = move right, -1 = move left
+    private ArrayList<Segment> segments;
+    private int direction;
+    private float speed;
+    private final int SEGMENT_WIDTH = 40;
+    private final int SEGMENT_HEIGHT = 15;
+    private long lastUpdateTime;
+    private float waveOffset;
+    private float targetY;
+    private float verticalSpeed;
 
-    public Centipede(int startX, int startY) {
-        segments = new ArrayList<>();
-        // เพิ่มหลายๆ จุดเพื่อสร้าง Centipede (ตะขาม)
-        for (int i = 0; i < 10; i++) {
-            segments.add(new Point(startX + i * 30, startY)); // ระยะห่างของส่วนคือ 30px
+    private class Segment {
+        float x, y;
+        float offset;
+        float targetX, targetY;
+        
+        public Segment(float x, float y) {
+            this.x = this.targetX = x;
+            this.y = this.targetY = y;
+            this.offset = (float) (Math.random() * 100);
         }
-        direction = 1;  // เริ่มจากขวาไปซ้าย
+    }
+    
+    public Centipede(float startX, float startY, float initialSpeed) {
+        this.speed = initialSpeed;
+        this.direction = 1;
+        this.segments = new ArrayList<>();
+        this.lastUpdateTime = System.currentTimeMillis();
+        this.waveOffset = 0;
+        this.targetY = startY;
+        this.verticalSpeed = 0.5f;
+        
+        for (int i = 0; i < 10; i++) {
+            segments.add(new Segment(
+                startX + i * (SEGMENT_WIDTH + 5), 
+                startY + (float)(Math.sin(i * 0.5) * 10)
+            ));
+        }
     }
 
+    @SuppressWarnings("unused")
     public void move() {
-        // เคลื่อนที่ทั้งหมดในทุกๆ ส่วน
-        for (int i = 0; i < segments.size(); i++) {
-            Point p = segments.get(i);
-            p.x += direction * 5;  // เคลื่อนที่ตามทิศทาง
-
-            // ถ้าส่วนแรกชนขอบจอ ให้ทุกส่วนเปลี่ยนทิศทางและลงไปข้างล่าง
-            if (p.x <= 0 || p.x >= MainGame.WIDTH - 30) {
-                direction = -direction;
-                for (Point segment : segments) {
-                    segment.y += 10;  // ทุกส่วนลงมา 10px
-                }
-                break;
-            }
+        long currentTime = System.currentTimeMillis();
+        float deltaTime = (currentTime - lastUpdateTime) / 1000f;
+        lastUpdateTime = currentTime;
+        
+        waveOffset += deltaTime * 2;
+        
+        int maxY = MainGame.HEIGHT - 100;
+        Segment head = segments.get(0);
+        
+        // เคลื่อนที่ส่วนหัวในแนวนอน
+        head.targetX += direction * speed * deltaTime * 60;
+        
+        // เคลื่อนที่ลงด้านล่างอย่างช้าๆ
+        targetY += verticalSpeed * deltaTime * 60;
+        head.targetY = targetY + (float)Math.sin(waveOffset) * 10;
+        
+        // ตรวจสอบการชนขอบ
+        if (head.targetX <= 0 || head.targetX >= MainGame.WIDTH - SEGMENT_WIDTH) {
+            direction = -direction;
+            head.targetX = Math.max(0, Math.min(head.targetX, MainGame.WIDTH - SEGMENT_WIDTH));
+            verticalSpeed += 0.1f;
         }
+        
+        // จำกัดความเร็วลงสูงสุด
+        verticalSpeed = Math.min(verticalSpeed, 2.0f);
+        
+        // อัพเดทตำแหน่งจริงของส่วนหัว
+        head.x += (head.targetX - head.x) * 0.2f;
+        head.y += (head.targetY - head.y) * 0.2f;
+    }
+
+    public void update() {
+        // อัพเดทส่วนต่อๆ มาด้วยความล่าช้า
+        for (int i = 1; i < segments.size(); i++) {
+            Segment current = segments.get(i);
+            Segment prev = segments.get(i-1);
+            
+            current.targetX = prev.x - (SEGMENT_WIDTH + 5);
+            current.targetY = prev.y;
+            
+            current.x += (current.targetX - current.x) * 0.1f;
+            current.y += (current.targetY - current.y) * 0.1f;
+            
+            // เพิ่มการเคลื่อนที่แบบคลื่นเล็กน้อย
+            current.y += (float)Math.sin(waveOffset + current.offset) * 2;
+        }
+    }
+
+    public boolean reachedBottom() {
+        return segments.get(0).y >= MainGame.HEIGHT - 50;
     }
 
     public void draw(Graphics g) {
-        g.setColor(Color.GREEN);
-        for (Point p : segments) {
-            g.fillRect(p.x, p.y, 30, 10);  // วาดทุกส่วนของ Centipede
+        for (int i = segments.size()-1; i >= 0; i--) {
+            Segment seg = segments.get(i);
+            
+            int segmentColor = 180 - (i * 12);
+            g.setColor(new Color(0, Math.max(50, segmentColor), 0));
+            g.fillRoundRect((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT, 10, 10);
+            
+            g.setColor(new Color(0, Math.max(30, segmentColor/2), 0));
+            g.drawRoundRect((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT, 10, 10);
+            
+            if (i > 0) {
+                g.drawLine((int)seg.x, (int)seg.y + SEGMENT_HEIGHT/2, 
+                           (int)seg.x - 5, (int)seg.y + SEGMENT_HEIGHT/2);
+            }
+            
+            if (i == 0) {
+                g.setColor(Color.WHITE);
+                g.fillOval((int)seg.x + 5, (int)seg.y + 3, 8, 8);
+                g.fillOval((int)seg.x + 25, (int)seg.y + 3, 8, 8);
+                g.setColor(Color.BLACK);
+                g.fillOval((int)seg.x + 7, (int)seg.y + 5, 4, 4);
+                g.fillOval((int)seg.x + 27, (int)seg.y + 5, 4, 4);
+            }
         }
     }
 
     public boolean checkCollision(Bullet bullet) {
         for (int i = 0; i < segments.size(); i++) {
-            Point p = segments.get(i);
-            // ตรวจสอบการชนระหว่างกระสุนกับส่วนของ Centipede
-            if (bullet.getX() >= p.x && bullet.getX() <= p.x + 30 &&
-                bullet.getY() >= p.y && bullet.getY() <= p.y + 10) {
-                segments.remove(i); // ลบส่วนที่โดนยิง
-                return true;  // กลับมาเมื่อพบการชน
+            Segment seg = segments.get(i);
+            if (bullet.getX() >= seg.x && bullet.getX() <= seg.x + SEGMENT_WIDTH &&
+                bullet.getY() >= seg.y && bullet.getY() <= seg.y + SEGMENT_HEIGHT) {
+                segments.remove(i);
+                return true;
             }
         }
         return false;
     }
 
     public boolean checkCollisionWithPlayer(Player player) {
-        for (Point p : segments) {
-            if (player.getX() >= p.x && player.getX() <= p.x + 30 &&
-                player.getY() >= p.y && player.getY() <= p.y + 10) {
-                return true;  // ถ้าชนกับ Player
+        Rectangle playerRect = player.getBounds();
+        for (Segment seg : segments) {
+            if (playerRect.intersects(new Rectangle((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT))) {
+                return true;
             }
         }
         return false;
     }
 
-    public void increaseSpeed() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'increaseSpeed'");
-    }
-
     public boolean isDefeated() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'isDefeated'");
+        return segments.isEmpty();
+    }
+    
+    public float getSpeed() {
+        return speed;
     }
 }

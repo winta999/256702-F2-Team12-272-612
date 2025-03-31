@@ -17,10 +17,7 @@ public class Mushroom {
     }
 
     public boolean checkCollision(Bullet bullet) {
-        if (bullet.getX() >= x && bullet.getX() <= x + size &&
-            bullet.getY() >= y && bullet.getY() <= y + size) {
-            return true;
-        }
-        return false;
+        return bullet.getX() >= x && bullet.getX() <= x + size &&
+               bullet.getY() >= y && bullet.getY() <= y + size;
     }
 }

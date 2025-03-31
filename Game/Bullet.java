@@ -14,9 +14,9 @@ public class Bullet {
     }
 
     public void move() {
-        y -= 5;  // กระสุนเคลื่อนที่ขึ้น
+        y -= 5;
         if (y < 0) {
-            isVisible = false;  // กระสุนหายเมื่อพ้นขอบจอ
+            isVisible = false;
         }
     }
 
