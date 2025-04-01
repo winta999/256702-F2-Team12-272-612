@@ -4,6 +4,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 public class MainGame extends JPanel implements ActionListener {
@@ -20,10 +21,21 @@ public class MainGame extends JPanel implements ActionListener {
     private boolean leftPressed, rightPressed, upPressed, downPressed, spacePressed;
     private float currentSpeed;
     private boolean gameOver;
+    private long lastShotTime;
+    private final long SHOT_DELAY = 300;
+    private int[] starX = new int[50];
+    private int[] starY = new int[50];
 
     public MainGame() {
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setBackground(Color.BLACK);
+
+        // สร้างดาวแบบสุ่มสำหรับพื้นหลัง
+        Random rand = new Random();
+        for (int i = 0; i < 50; i++) {
+            starX[i] = rand.nextInt(WIDTH);
+            starY[i] = rand.nextInt(HEIGHT);
+        }
 
         player = new Player(WIDTH / 2 - 15, HEIGHT - 100, HEIGHT - 180, HEIGHT - 50);
         bullets = new ArrayList<>();
@@ -33,6 +45,7 @@ public class MainGame extends JPanel implements ActionListener {
         score = 0;
         highScore = 0;
         gameOver = false;
+        lastShotTime = 0;
 
         generateMushrooms();
 
@@ -76,8 +89,12 @@ public class MainGame extends JPanel implements ActionListener {
     }
 
     private void spawnNewCentipede() {
-        currentSpeed += 0.5f;
-        centipede = new Centipede(50, 50, currentSpeed);
+        currentSpeed = 2.0f + (score / 500f);
+        int segmentCount = 10 + (score / 200);
+        segmentCount = Math.min(segmentCount, 20);
+        
+        centipede = new Centipede(50, 50, currentSpeed, segmentCount);
+        centipede.setVerticalFrequency(0.05f + (score / 2000f));
     }
 
     private void restartGame() {
@@ -89,85 +106,98 @@ public class MainGame extends JPanel implements ActionListener {
         generateMushrooms();
         score = 0;
         gameOver = false;
+        lastShotTime = 0;
         timer.start();
         requestFocus();
+    }
+
+    public Centipede getCentipede() {
+        return centipede;
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
+        Graphics2D g2d = (Graphics2D)g;
+        
+        // วาดพื้นหลัง
+        GradientPaint bgGradient = new GradientPaint(
+            0, 0, new Color(10, 5, 30),
+            0, HEIGHT, new Color(0, 0, 0)
+        );
+        g2d.setPaint(bgGradient);
+        g2d.fillRect(0, 0, WIDTH, HEIGHT);
+        
+        // วาดดาว
+        g2d.setColor(Color.WHITE);
+        for (int i = 0; i < 50; i++) {
+            int size = 1 + (int)(Math.random() * 2);
+            g2d.fillOval(starX[i], starY[i], size, size);
+        }
         
         // วาดเห็ด
         for (Mushroom mushroom : mushrooms) {
-            mushroom.draw(g);
+            mushroom.draw(g2d);
         }
         
         // วาดกระสุน
         for (Bullet bullet : bullets) {
-            bullet.draw(g);
+            bullet.draw(g2d);
         }
         
         // วาดตะขาบ
-        centipede.draw(g);
+        centipede.draw(g2d);
         
         // วาดผู้เล่น
-        player.draw(g);
+        player.draw(g2d);
         
         // วาด UI
-        g.setColor(Color.WHITE);
+        g2d.setColor(new Color(255, 255, 255, 180));
+        g2d.fillRoundRect(10, 10, 120, 40, 10, 10);
+        g2d.fillRoundRect(WIDTH - 130, 10, 120, 60, 10, 10);
+        
+        g2d.setColor(Color.BLACK);
         Font uiFont = new Font("Arial", Font.BOLD, 16);
-        g.setFont(uiFont);
+        g2d.setFont(uiFont);
         
-        int uiBaseY = 25;
-        int leftPadding = 15;
-        int rightPadding = 15;
-        
-        // ชีวิต
-        g.drawString("Lives: " + player.getLives(), leftPadding, uiBaseY);
-        
-        // ความเร็ว
-        String speedText = "Speed: " + String.format("%.1f", centipede.getSpeed());
-        int speedTextWidth = g.getFontMetrics().stringWidth(speedText);
-        g.drawString(speedText, (WIDTH - speedTextWidth)/2, uiBaseY);
-        
-        // คะแนน
-        g.drawString("Score: " + score, WIDTH - g.getFontMetrics().stringWidth("Score: 00000") - rightPadding, uiBaseY);
-        g.drawString("High: " + highScore, WIDTH - g.getFontMetrics().stringWidth("High: 00000") - rightPadding, uiBaseY + 20);
+        g2d.drawString("LIVES: " + player.getLives(), 20, 30);
+        g2d.drawString("SCORE: " + score, WIDTH - 120, 30);
+        g2d.drawString("HIGH: " + highScore, WIDTH - 120, 50);
         
         // หน้าจอจบเกม
         if (gameOver) {
-            g.setColor(new Color(0, 0, 0, 180));
-            g.fillRect(0, 0, WIDTH, HEIGHT);
+            g2d.setColor(new Color(0, 0, 0, 180));
+            g2d.fillRect(0, 0, WIDTH, HEIGHT);
             
             int boxWidth = 300;
             int boxHeight = 200;
             int boxX = (WIDTH - boxWidth)/2;
             int boxY = (HEIGHT - boxHeight)/2;
             
-            g.setColor(new Color(30, 30, 30));
-            g.fillRect(boxX, boxY, boxWidth, boxHeight);
+            g2d.setColor(new Color(30, 30, 30));
+            g2d.fillRect(boxX, boxY, boxWidth, boxHeight);
             
-            g.setColor(new Color(255, 50, 50));
-            g.drawRect(boxX, boxY, boxWidth, boxHeight);
+            g2d.setColor(new Color(255, 50, 50));
+            g2d.drawRect(boxX, boxY, boxWidth, boxHeight);
             
-            g.setColor(Color.WHITE);
+            g2d.setColor(Color.WHITE);
             Font gameOverFont = new Font("Arial", Font.BOLD, 36);
-            g.setFont(gameOverFont);
+            g2d.setFont(gameOverFont);
             
             String gameOverText = "GAME OVER";
-            int gameOverWidth = g.getFontMetrics().stringWidth(gameOverText);
-            g.drawString(gameOverText, boxX + (boxWidth - gameOverWidth)/2, boxY + 50);
+            int gameOverWidth = g2d.getFontMetrics().stringWidth(gameOverText);
+            g2d.drawString(gameOverText, boxX + (boxWidth - gameOverWidth)/2, boxY + 50);
             
             Font infoFont = new Font("Arial", Font.PLAIN, 24);
-            g.setFont(infoFont);
+            g2d.setFont(infoFont);
             
             String scoreText = "Score: " + score;
-            int scoreWidth = g.getFontMetrics().stringWidth(scoreText);
-            g.drawString(scoreText, boxX + (boxWidth - scoreWidth)/2, boxY + 100);
+            int scoreWidth = g2d.getFontMetrics().stringWidth(scoreText);
+            g2d.drawString(scoreText, boxX + (boxWidth - scoreWidth)/2, boxY + 100);
             
             String restartText = "Press R to Restart";
-            int restartWidth = g.getFontMetrics().stringWidth(restartText);
-            g.drawString(restartText, boxX + (boxWidth - restartWidth)/2, boxY + 150);
+            int restartWidth = g2d.getFontMetrics().stringWidth(restartText);
+            g2d.drawString(restartText, boxX + (boxWidth - restartWidth)/2, boxY + 150);
         }
     }
 
@@ -184,16 +214,21 @@ public class MainGame extends JPanel implements ActionListener {
             player.move(dx, dy, WIDTH);
 
             // การยิงกระสุน
-            if (spacePressed) {
-                if (bullets.isEmpty() || bullets.get(bullets.size() - 1).getY() < player.getY() - 40) {
-                    bullets.add(new Bullet(player.getX() + player.getWidth()/2 - 2, player.getY()));
-                }
+            if (spacePressed && System.currentTimeMillis() - lastShotTime > SHOT_DELAY) {
+                bullets.add(new Bullet(player.getX() + player.getWidth()/2 - 2, player.getY()));
+                lastShotTime = System.currentTimeMillis();
             }
 
             // อัพเดทกระสุน
-            bullets.removeIf(bullet -> {
+            Iterator<Bullet> bulletIter = bullets.iterator();
+            while (bulletIter.hasNext()) {
+                Bullet bullet = bulletIter.next();
                 bullet.move();
-                if (!bullet.isVisible()) return true;
+                
+                if (!bullet.isVisible()) {
+                    bulletIter.remove();
+                    continue;
+                }
                 
                 // ตรวจสอบการชนกับตะขาบ
                 if (centipede.checkCollision(bullet)) {
@@ -202,17 +237,26 @@ public class MainGame extends JPanel implements ActionListener {
                         score += 100;
                         spawnNewCentipede();
                     }
-                    return true;
+                    bulletIter.remove();
+                    continue;
                 }
                 
                 // ตรวจสอบการชนกับเห็ด
                 for (Mushroom mushroom : mushrooms) {
-                    if (mushroom.checkCollision(bullet)) {
-                        return true;
+                    if (mushroom.isVisible() && bullet.checkPixelPerfectCollision(mushroom.getBounds())) {
+                        if (mushroom.takeDamage()) {
+                            score += 50;
+                            // สร้างเห็ดใหม่ในตำแหน่งสุ่ม
+                            Random rand = new Random();
+                            int newX = rand.nextInt(WIDTH / 20) * 20;
+                            int newY = 50 + rand.nextInt((HEIGHT - 200) / 20) * 20;
+                            mushroom.respawn(newX, newY);
+                        }
+                        bulletIter.remove();
+                        break;
                     }
                 }
-                return false;
-            });
+            }
 
             // อัพเดทตะขาบ
             centipede.move();

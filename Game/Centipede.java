@@ -7,119 +7,175 @@ public class Centipede {
     private ArrayList<Segment> segments;
     private int direction;
     private float speed;
-    private final int SEGMENT_WIDTH = 40;
+    private final int SEGMENT_WIDTH = 28;
     private final int SEGMENT_HEIGHT = 15;
+    private final int SEGMENT_GAP = 2;
     private long lastUpdateTime;
     private float waveOffset;
     private float targetY;
     private float verticalSpeed;
+    private Color bodyColor = new Color(0, 180, 0);
+    private Color headColor = new Color(0, 220, 0);
+    private float verticalAmplitude = 3.0f;
+    private float verticalFrequency = 0.05f;
 
-    private class Segment {
+    class Segment {
         float x, y;
         float offset;
         float targetX, targetY;
+        Rectangle bounds;
         
         public Segment(float x, float y) {
             this.x = this.targetX = x;
             this.y = this.targetY = y;
             this.offset = (float) (Math.random() * 100);
+            this.bounds = new Rectangle((int)x, (int)y, SEGMENT_WIDTH, SEGMENT_HEIGHT);
+        }
+        
+        public void updateBounds() {
+            bounds.setLocation((int)x, (int)y);
         }
     }
     
     public Centipede(float startX, float startY, float initialSpeed) {
+        this(startX, startY, initialSpeed, 10);
+    }
+    
+    public Centipede(float startX, float startY, float initialSpeed, int segmentCount) {
         this.speed = initialSpeed;
         this.direction = 1;
         this.segments = new ArrayList<>();
         this.lastUpdateTime = System.currentTimeMillis();
         this.waveOffset = 0;
         this.targetY = startY;
-        this.verticalSpeed = 0.5f;
+        this.verticalSpeed = 0.3f;
         
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < segmentCount; i++) {
             segments.add(new Segment(
-                startX + i * (SEGMENT_WIDTH + 5), 
-                startY + (float)(Math.sin(i * 0.5) * 10)
+                startX + i * (SEGMENT_WIDTH + SEGMENT_GAP), 
+                startY + (float)(Math.sin(i * 0.3) * 3)
             ));
         }
     }
 
-    @SuppressWarnings("unused")
+    public void setVerticalFrequency(float frequency) {
+        this.verticalFrequency = frequency;
+    }
+
     public void move() {
         long currentTime = System.currentTimeMillis();
         float deltaTime = (currentTime - lastUpdateTime) / 1000f;
         lastUpdateTime = currentTime;
         
-        waveOffset += deltaTime * 2;
+        waveOffset += deltaTime * 1.5f;
         
-        int maxY = MainGame.HEIGHT - 100;
+        if (segments.isEmpty()) return;
+        
         Segment head = segments.get(0);
         
-        // เคลื่อนที่ส่วนหัวในแนวนอน
         head.targetX += direction * speed * deltaTime * 60;
         
-        // เคลื่อนที่ลงด้านล่างอย่างช้าๆ
-        targetY += verticalSpeed * deltaTime * 60;
-        head.targetY = targetY + (float)Math.sin(waveOffset) * 10;
+        float waveMovement = (float)Math.sin(waveOffset) * verticalAmplitude;
+        head.targetY += verticalSpeed * deltaTime * 30;
+        head.targetY += waveMovement;
         
-        // ตรวจสอบการชนขอบ
+        float distanceToBottom = MainGame.HEIGHT - head.targetY;
+        if (distanceToBottom < 200) {
+            verticalSpeed = 0.5f + (1.0f - (distanceToBottom / 200)) * 2.0f;
+        }
+        
         if (head.targetX <= 0 || head.targetX >= MainGame.WIDTH - SEGMENT_WIDTH) {
             direction = -direction;
             head.targetX = Math.max(0, Math.min(head.targetX, MainGame.WIDTH - SEGMENT_WIDTH));
-            verticalSpeed += 0.1f;
+            verticalSpeed = Math.min(verticalSpeed + 0.1f, 3.0f);
         }
         
-        // จำกัดความเร็วลงสูงสุด
-        verticalSpeed = Math.min(verticalSpeed, 2.0f);
-        
-        // อัพเดทตำแหน่งจริงของส่วนหัว
         head.x += (head.targetX - head.x) * 0.2f;
         head.y += (head.targetY - head.y) * 0.2f;
+        head.updateBounds();
     }
 
     public void update() {
-        // อัพเดทส่วนต่อๆ มาด้วยความล่าช้า
         for (int i = 1; i < segments.size(); i++) {
             Segment current = segments.get(i);
             Segment prev = segments.get(i-1);
             
-            current.targetX = prev.x - (SEGMENT_WIDTH + 5);
-            current.targetY = prev.y;
+            float dx = prev.x - current.x;
+            float dy = prev.y - current.y;
+            float distance = (float)Math.sqrt(dx*dx + dy*dy);
+            float targetDistance = SEGMENT_WIDTH + SEGMENT_GAP;
             
-            current.x += (current.targetX - current.x) * 0.1f;
-            current.y += (current.targetY - current.y) * 0.1f;
+            if (distance > 0) {
+                float ratio = targetDistance / distance;
+                current.targetX = prev.x - dx * ratio;
+                current.targetY = prev.y - dy * ratio;
+            }
             
-            // เพิ่มการเคลื่อนที่แบบคลื่นเล็กน้อย
-            current.y += (float)Math.sin(waveOffset + current.offset) * 2;
+            current.x += (current.targetX - current.x) * 0.15f;
+            current.y += (current.targetY - current.y) * 0.15f;
+            
+            preventSegmentOverlap(i);
+            current.updateBounds();
+        }
+    }
+    
+    private void preventSegmentOverlap(int index) {
+        if (index <= 0 || index >= segments.size()) return;
+        
+        Segment current = segments.get(index);
+        Segment prev = segments.get(index-1);
+        
+        if (current.bounds.intersects(prev.bounds)) {
+            float dx = current.x - prev.x;
+            float dy = current.y - prev.y;
+            float distance = (float)Math.sqrt(dx*dx + dy*dy);
+            float minDistance = SEGMENT_WIDTH + SEGMENT_GAP;
+            
+            if (distance < minDistance && distance > 0) {
+                float adjust = (minDistance - distance) / distance;
+                current.x += dx * adjust * 0.7f;
+                current.y += dy * adjust * 0.7f;
+            }
         }
     }
 
     public boolean reachedBottom() {
-        return segments.get(0).y >= MainGame.HEIGHT - 50;
+        return !segments.isEmpty() && segments.get(0).y >= MainGame.HEIGHT - 50;
     }
 
     public void draw(Graphics g) {
-        for (int i = segments.size()-1; i >= 0; i--) {
+        Graphics2D g2d = (Graphics2D)g;
+        
+        for (int i = 0; i < segments.size(); i++) {
             Segment seg = segments.get(i);
             
-            int segmentColor = 180 - (i * 12);
-            g.setColor(new Color(0, Math.max(50, segmentColor), 0));
-            g.fillRoundRect((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT, 10, 10);
+            Color mainColor = (i == 0) ? new Color(0, 220, 0) : 
+                new Color(0, 180 - (i*2), 0);
             
-            g.setColor(new Color(0, Math.max(30, segmentColor/2), 0));
-            g.drawRoundRect((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT, 10, 10);
+            GradientPaint bodyGradient = new GradientPaint(
+                seg.x, seg.y, mainColor.brighter(),
+                seg.x, seg.y + SEGMENT_HEIGHT, mainColor.darker());
             
-            if (i > 0) {
-                g.drawLine((int)seg.x, (int)seg.y + SEGMENT_HEIGHT/2, 
-                           (int)seg.x - 5, (int)seg.y + SEGMENT_HEIGHT/2);
+            g2d.setPaint(bodyGradient);
+            g2d.fillRoundRect((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT, 8, 8);
+            
+            g2d.setColor(new Color(0, 100, 0, 100));
+            for (int j = 0; j < 3; j++) {
+                int lineY = (int)seg.y + 3 + j*4;
+                g2d.drawLine((int)seg.x + 3, lineY, (int)seg.x + SEGMENT_WIDTH - 3, lineY);
             }
             
             if (i == 0) {
-                g.setColor(Color.WHITE);
-                g.fillOval((int)seg.x + 5, (int)seg.y + 3, 8, 8);
-                g.fillOval((int)seg.x + 25, (int)seg.y + 3, 8, 8);
-                g.setColor(Color.BLACK);
-                g.fillOval((int)seg.x + 7, (int)seg.y + 5, 4, 4);
-                g.fillOval((int)seg.x + 27, (int)seg.y + 5, 4, 4);
+                g2d.setColor(Color.WHITE);
+                g2d.fillOval((int)seg.x + 5, (int)seg.y + 3, 6, 6);
+                g2d.fillOval((int)seg.x + 17, (int)seg.y + 3, 6, 6);
+                
+                g2d.setColor(Color.RED);
+                g2d.fillOval((int)seg.x + 6, (int)seg.y + 4, 3, 3);
+                g2d.fillOval((int)seg.x + 18, (int)seg.y + 4, 3, 3);
+                
+                g2d.setColor(Color.BLACK);
+                g2d.fillArc((int)seg.x + 10, (int)seg.y + 8, 8, 5, 180, 180);
             }
         }
     }
@@ -127,9 +183,14 @@ public class Centipede {
     public boolean checkCollision(Bullet bullet) {
         for (int i = 0; i < segments.size(); i++) {
             Segment seg = segments.get(i);
-            if (bullet.getX() >= seg.x && bullet.getX() <= seg.x + SEGMENT_WIDTH &&
-                bullet.getY() >= seg.y && bullet.getY() <= seg.y + SEGMENT_HEIGHT) {
+            if (bullet.checkPixelPerfectCollision(seg.bounds)) {
                 segments.remove(i);
+                
+                if (i == 0 && !segments.isEmpty()) {
+                    Segment newHead = segments.get(0);
+                    newHead.targetX += direction * 20;
+                }
+                
                 return true;
             }
         }
@@ -139,7 +200,7 @@ public class Centipede {
     public boolean checkCollisionWithPlayer(Player player) {
         Rectangle playerRect = player.getBounds();
         for (Segment seg : segments) {
-            if (playerRect.intersects(new Rectangle((int)seg.x, (int)seg.y, SEGMENT_WIDTH, SEGMENT_HEIGHT))) {
+            if (playerRect.intersects(seg.bounds)) {
                 return true;
             }
         }
@@ -148,6 +209,10 @@ public class Centipede {
 
     public boolean isDefeated() {
         return segments.isEmpty();
+    }
+    
+    public ArrayList<Segment> getSegments() {
+        return new ArrayList<>(segments);
     }
     
     public float getSpeed() {

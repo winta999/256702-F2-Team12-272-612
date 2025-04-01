@@ -1,30 +1,68 @@
 package Game;
 
 import java.awt.*;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
 
 public class Bullet {
-    private int x, y;
-    private final int width = 5, height = 10;
+    private float x, y;
+    private final int width = 5;
+    private final int height = 10;
     private boolean isVisible;
+    private float speed = 300.0f;
+    private long lastUpdateTime;
+    private Shape bulletShape;
 
     public Bullet(int startX, int startY) {
         this.x = startX;
         this.y = startY;
         this.isVisible = true;
+        this.lastUpdateTime = System.currentTimeMillis();
+        this.bulletShape = new Ellipse2D.Float(x, y, width, height);
     }
 
     public void move() {
-        y -= 5;
+        long currentTime = System.currentTimeMillis();
+        float deltaTime = (currentTime - lastUpdateTime) / 1000f;
+        lastUpdateTime = currentTime;
+        
+        y -= speed * deltaTime;
+        bulletShape = new Ellipse2D.Float(x, y, width, height);
+        
         if (y < 0) {
             isVisible = false;
         }
     }
 
     public void draw(Graphics g) {
-        if (isVisible) {
-            g.setColor(Color.YELLOW);
-            g.fillRect(x, y, width, height);
-        }
+        if (!isVisible) return;
+        
+        Graphics2D g2d = (Graphics2D)g;
+        
+        // เอฟเฟกต์แสงกระสุน
+        g2d.setColor(new Color(255, 255, 150, 100));
+        g2d.fillOval((int)x - 3, (int)y - 3, width + 6, height + 6);
+        
+        // ตัวกระสุน
+        GradientPaint bulletGradient = new GradientPaint(
+            (int)x, (int)y, Color.YELLOW,
+            (int)x, (int)y + height, Color.ORANGE
+        );
+        g2d.setPaint(bulletGradient);
+        g2d.fillRect((int)x, (int)y, width, height);
+        
+        // ไฟท้ายกระสุน
+        g2d.setColor(new Color(255, 100, 0, 150));
+        g2d.fillRect((int)x - 1, (int)y + height - 3, width + 2, 3);
+    }
+
+    public boolean checkPixelPerfectCollision(Shape target) {
+        if (!isVisible) return false;
+        
+        Area bulletArea = new Area(bulletShape);
+        Area targetArea = new Area(target);
+        bulletArea.intersect(targetArea);
+        return !bulletArea.isEmpty();
     }
 
     public boolean isVisible() {
@@ -32,10 +70,10 @@ public class Bullet {
     }
 
     public int getX() {
-        return x;
+        return (int)x;
     }
 
     public int getY() {
-        return y;
+        return (int)y;
     }
 }

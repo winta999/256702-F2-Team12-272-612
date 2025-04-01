@@ -4,7 +4,7 @@ import java.awt.*;
 
 public class Player {
     private int x, y;
-    private final int width = 35;  // ขยายขนาดผู้เล่นเล็กน้อย
+    private final int width = 35;
     private final int height = 25;
     private final int minY, maxY;
     private int lives;
@@ -27,8 +27,22 @@ public class Player {
     }
 
     public void draw(Graphics g) {
-        g.setColor(new Color(30, 120, 255));  // สีน้ำเงินเข้มขึ้น
-        g.fillRoundRect(x, y, width, height, 5, 5);  // มุมโค้งเล็กน้อย
+        Graphics2D g2d = (Graphics2D)g;
+        
+        GradientPaint shipGradient = new GradientPaint(
+            x, y, new Color(0, 150, 255),
+            x, y + height, new Color(0, 80, 220));
+        g2d.setPaint(shipGradient);
+        g2d.fillRoundRect(x, y, width, height, 10, 10);
+        
+        g2d.setColor(new Color(200, 230, 255));
+        g2d.drawRoundRect(x, y, width, height, 10, 10);
+        
+        g2d.setColor(new Color(255, 100, 0, 150));
+        g2d.fillOval(x + 5, y + height - 8, 10, 5);
+        
+        g2d.setColor(new Color(150, 220, 255, 200));
+        g2d.fillArc(x + width - 15, y + 5, 15, 15, 0, 180);
     }
 
     public int getX() { return x; }
