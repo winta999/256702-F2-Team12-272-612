@@ -3,6 +3,8 @@ package Game;
 import java.awt.*;
 import java.util.ArrayList;
 
+import Game.Main.MainGame;
+
 public class Centipede {
     private ArrayList<Segment> segments;
     private int direction;

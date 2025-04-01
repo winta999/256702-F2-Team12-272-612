@@ -4,18 +4,22 @@ import java.awt.*;
 import java.awt.geom.Area;
 import java.awt.geom.Ellipse2D;
 
+import Game.Main.MainGame;
+
 public class Bullet {
     private float x, y;
     private final int width = 5;
     private final int height = 10;
     private boolean isVisible;
-    private float speed = 300.0f;
+    private float speedX, speedY;
     private long lastUpdateTime;
     private Shape bulletShape;
 
-    public Bullet(int startX, int startY) {
+    public Bullet(int startX, int startY, float speedX, float speedY) {
         this.x = startX;
         this.y = startY;
+        this.speedX = speedX;
+        this.speedY = speedY;
         this.isVisible = true;
         this.lastUpdateTime = System.currentTimeMillis();
         this.bulletShape = new Ellipse2D.Float(x, y, width, height);
@@ -26,14 +30,15 @@ public class Bullet {
         float deltaTime = (currentTime - lastUpdateTime) / 1000f;
         lastUpdateTime = currentTime;
         
-        y -= speed * deltaTime;
+        x += speedX * deltaTime * 60;
+        y += speedY * deltaTime * 60;
         bulletShape = new Ellipse2D.Float(x, y, width, height);
         
-        if (y < 0) {
+        if (y < 0 || x < 0 || x > MainGame.WIDTH) {
             isVisible = false;
         }
     }
-
+    
     public void draw(Graphics g) {
         if (!isVisible) return;
         
@@ -75,5 +80,10 @@ public class Bullet {
 
     public int getY() {
         return (int)y;
+    }
+
+    public Rectangle getBounds() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getBounds'");
     }
 }
