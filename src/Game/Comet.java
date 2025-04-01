@@ -7,17 +7,20 @@ public class Comet {
     public enum CometDirection { HORIZONTAL, VERTICAL }
     
     private int x, y;
-    private int width, height;
+    private final int width = 30;
+    private final int height = 30;
     private float speed;
     private boolean visible;
     private Random rand;
     private int screenWidth, screenHeight;
     private Color[] tailColors;
     private int tailLength;
-    private boolean movingRight; // For horizontal comets
-    private boolean movingDown;  // For vertical comets
+    private boolean movingRight;
+    private boolean movingDown;
     private CometDirection direction;
     private int playerMinY, playerMaxY;
+    private CometWarning warning;
+    private boolean hasWarning = true;
 
     public Comet(int screenWidth, int screenHeight, int playerMinY, int playerMaxY, float baseSpeed) {
         this.rand = new Random();
@@ -25,12 +28,9 @@ public class Comet {
         this.screenHeight = screenHeight;
         this.playerMinY = playerMinY;
         this.playerMaxY = playerMaxY;
-        this.width = 30;
-        this.height = 30;
         this.speed = baseSpeed * (1.5f + rand.nextFloat() * 0.5f);
         this.tailLength = 10 + rand.nextInt(20);
         
-        // Randomly choose direction (50% horizontal, 50% vertical)
         this.direction = rand.nextBoolean() ? CometDirection.HORIZONTAL : CometDirection.VERTICAL;
         
         if (direction == CometDirection.HORIZONTAL) {
@@ -41,7 +41,7 @@ public class Comet {
             } else {
                 this.x = screenWidth;
             }
-        } else { // VERTICAL
+        } else {
             this.movingDown = rand.nextBoolean();
             this.x = rand.nextInt(screenWidth - width);
             if (movingDown) {
@@ -51,7 +51,16 @@ public class Comet {
             }
         }
         
-        this.visible = true;
+        this.visible = false;
+        this.warning = new CometWarning(
+            direction, 
+            movingRight, 
+            movingDown, 
+            screenWidth, 
+            screenHeight,
+            x,
+            y
+        );
         
         this.tailColors = new Color[tailLength];
         for (int i = 0; i < tailLength; i++) {
@@ -66,6 +75,14 @@ public class Comet {
     }
 
     public void move() {
+        if (hasWarning && warning.isActive()) {
+            warning.update();
+            return;
+        }
+        
+        hasWarning = false;
+        visible = true;
+        
         if (direction == CometDirection.HORIZONTAL) {
             if (movingRight) {
                 x += speed;
@@ -74,7 +91,7 @@ public class Comet {
                 x -= speed;
                 if (x < -width) visible = false;
             }
-        } else { // VERTICAL
+        } else {
             if (movingDown) {
                 y += speed;
                 if (y > screenHeight) visible = false;
@@ -86,10 +103,12 @@ public class Comet {
     }
 
     public boolean isVisible() {
-        return visible;
+        return visible || (hasWarning && warning.isActive());
     }
 
     public boolean checkCollisionWithPlayer(Player player) {
+        if (!visible) return false;
+        
         Rectangle cometRect = new Rectangle(x, y, width, height);
         Rectangle playerRect = new Rectangle(
             player.getX(), player.getY(),
@@ -99,6 +118,13 @@ public class Comet {
     }
 
     public void draw(Graphics2D g2d) {
+        if (hasWarning && warning.isActive()) {
+            warning.draw(g2d);
+            return;
+        }
+        
+        if (!visible) return;
+        
         // Draw tail
         for (int i = 0; i < tailLength; i++) {
             int tailX, tailY;
@@ -106,7 +132,7 @@ public class Comet {
             if (direction == CometDirection.HORIZONTAL) {
                 tailX = movingRight ? x - i * 5 : x + i * 5;
                 tailY = y + height/4;
-            } else { // VERTICAL
+            } else {
                 tailX = x + width/4;
                 tailY = movingDown ? y - i * 5 : y + i * 5;
             }
@@ -139,5 +165,25 @@ public class Comet {
         // Draw glowing effect
         g2d.setColor(new Color(255, 200, 100, 100));
         g2d.fillOval(x - 5, y - 5, width + 10, height + 10);
+    }
+
+    public CometDirection getDirection() {
+        return direction;
+    }
+    
+    public boolean isMovingRight() {
+        return movingRight;
+    }
+    
+    public boolean isMovingDown() {
+        return movingDown;
+    }
+    
+    public int getX() {
+        return x;
+    }
+    
+    public int getY() {
+        return y;
     }
 }
