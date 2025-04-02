@@ -18,7 +18,6 @@ public class Comet {
     private boolean movingRight;
     private boolean movingDown;
     private CometDirection direction;
-    private int playerMinY, playerMaxY;
     private CometWarning warning;
     private boolean hasWarning = true;
 
@@ -26,8 +25,6 @@ public class Comet {
         this.rand = new Random();
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
-        this.playerMinY = playerMinY;
-        this.playerMaxY = playerMaxY;
         this.speed = baseSpeed * (1.5f + rand.nextFloat() * 0.5f);
         this.tailLength = 10 + rand.nextInt(20);
         

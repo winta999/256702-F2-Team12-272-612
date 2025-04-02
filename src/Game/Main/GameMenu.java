@@ -6,12 +6,7 @@ import java.awt.*;
 import java.util.Random;
 
 public class GameMenu extends JPanel {
-    private MainGame mainGame;
-    private JFrame frame;
-
     public GameMenu(JFrame frame, MainGame mainGame) {
-        this.frame = frame;
-        this.mainGame = mainGame;
         setLayout(new BorderLayout());
         setBackground(new Color(10, 5, 30));
 

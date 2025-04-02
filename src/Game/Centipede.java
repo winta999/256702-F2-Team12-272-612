@@ -14,13 +14,8 @@ public class Centipede {
     private final int SEGMENT_GAP = 2;
     private long lastUpdateTime;
     private float waveOffset;
-    private float targetY;
     private float verticalSpeed;
-    private Color bodyColor = new Color(0, 180, 0);
-    private Color headColor = new Color(0, 220, 0);
     private float verticalAmplitude = 3.0f;
-    private float verticalFrequency = 0.05f;
-
     class Segment {
         float x, y;
         float offset;
@@ -49,7 +44,6 @@ public class Centipede {
         this.segments = new ArrayList<>();
         this.lastUpdateTime = System.currentTimeMillis();
         this.waveOffset = 0;
-        this.targetY = startY;
         this.verticalSpeed = 0.3f;
         
         for (int i = 0; i < segmentCount; i++) {
@@ -61,7 +55,6 @@ public class Centipede {
     }
 
     public void setVerticalFrequency(float frequency) {
-        this.verticalFrequency = frequency;
     }
 
     public void move() {

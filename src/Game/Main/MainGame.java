@@ -182,11 +182,8 @@ public class MainGame extends JPanel implements ActionListener {
     }
 
     private void drawUI(Graphics2D g2d) {
-        g2d.setColor(new Color(255, 255, 255, 180));
-        g2d.fillRoundRect(10, 10, 120, 40, 10, 10);
-        g2d.fillRoundRect(WIDTH - 130, 10, 120, 60, 10, 10);
         
-        g2d.setColor(Color.BLACK);
+        g2d.setColor(Color.WHITE);
         Font uiFont = new Font("Arial", Font.BOLD, 16);
         g2d.setFont(uiFont);
         
@@ -303,7 +300,7 @@ public class MainGame extends JPanel implements ActionListener {
 
     private void handleMushroomEffect(Mushroom mushroom) {
         switch(mushroom.getType()) {
-            case RAINBOW: score += 1000; break;
+            case RAINBOW: score += 500; break;
             case BLUE: 
                 bulletSpeedMultiplier += 0.5f;
                 score += 20;
